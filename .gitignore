@@ -1,17 +1,80 @@
+# Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables (NEVER commit credentials)
 .env
 .env.local
+.env.*.local
+.env.production
+.env.test
+
+# Build outputs
 dist/
 build/
-.DS_Store
-*.log
-data/history/*.json
-data/signals/*.json
-cache/
-__pycache__/
-*.pyc
-.pytest_cache/
-venv/
-env/
+*.tsbuildinfo
+out/
+
+# IDE
+.vscode/
 .idea/
-.vscode/settings.json
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+*.cache
+
+# Testing
+coverage/
+.nyc_output/
+
+# Runtime data
+.pids
+*.pid
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Sensitive files
+.env*
+config.json
+secrets.json
+credentials.json
+*.key
+*.pem
+*.p12
+
+# Project specific
+data/history/
+data/signals/
+data/settings.json
+output/
+reports/
+
+# Config files
+config/local.json
+.env.example.filled
