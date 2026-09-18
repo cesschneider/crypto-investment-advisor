@@ -1,0 +1,60 @@
+{
+  "strategies": {
+    "swing": {
+      "enabled": true,
+      "min_gain_percentage": 15,
+      "hold_days_min": 7,
+      "hold_days_max": 60,
+      "description": "Medium-term swing trades on established coins"
+    },
+    "momentum": {
+      "enabled": true,
+      "min_rsi_move": 20,
+      "volume_multiplier": 1.5,
+      "description": "Fast momentum plays on volume spikes"
+    },
+    "contrarian": {
+      "enabled": true,
+      "max_market_cap_usd": 5000000,
+      "description": "Counter-trend opportunities in altcoins"
+    },
+    "altcoin_hunt": {
+      "enabled": true,
+      "max_age_days": 30,
+      "min_liquidity_usd": 100000,
+      "max_liquidity_usd": 10000000,
+      "description": "New token launches with high potential"
+    }
+  },
+  "risk": {
+    "max_position_size_percentage": 5,
+    "stop_loss_percentage": 8,
+    "take_profit_percentage": 25,
+    "portfolio_concentration": 30
+  },
+  "thresholds": {
+    "rsi_overbought": 70,
+    "rsi_oversold": 30,
+    "macd_signal_strength": "strong",
+    "min_volume_usd_24h": 500000,
+    "min_market_cap_usd": 1000000
+  },
+  "analysis": {
+    "interval_minutes": 60,
+    "altcoin_scan_interval_hours": 4,
+    "lookback_days": 90
+  },
+  "alerts": {
+    "email": true,
+    "webhook": true,
+    "dashboard": true,
+    "telegram": false,
+    "discord": false
+  },
+  "reporting": {
+    "daily_report_time": "07:00",
+    "timezone": "America/Sao_Paulo",
+    "include_historical": true,
+    "include_performance": true
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "crypto-investment-advisor",
+  "version": "1.0.0",
+  "description": "Aggressive long-term crypto investment advisor with signal analysis and opportunity detection",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "analyze": "ts-node src/analyzers/index.ts",
+    "scan-launches": "ts-node src/scripts/scan-new-launches.ts",
+    "report": "ts-node src/scripts/generate-report.ts",
+    "monitor": "ts-node src/scripts/monitor-signals.ts"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.0.0"
+  }
+}
