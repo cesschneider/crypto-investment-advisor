@@ -1,17 +1,3 @@
-/**
- * Technical Analysis Engine
- * RSI, MACD, Moving Averages, Support/Resistance
- */
-
-interface Candle {
-  time: Date;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
 class TechnicalAnalyzer {
   /**
    * Calculate RSI (Relative Strength Index)
