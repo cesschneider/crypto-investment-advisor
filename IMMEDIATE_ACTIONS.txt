@@ -1,0 +1,205 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║       CRYPTO INVESTMENT ADVISOR — PRÓXIMOS PASSOS (RESUMO EXECUTIVO)       ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+## STATUS ATUAL
+
+✅ Projeto criado em: /root/projects/crypto-investment-advisor
+✅ Estrutura completa: 13 arquivos source + 4 docs
+✅ Skill Hermes registrada: crypto-investment-advisor
+✅ Git: 5 commits limpos
+✅ File Mutation Service: Testado e funcionando
+⏳ Bloqueador: Suas decisões + chaves de API
+
+---
+
+## 3 OPÇÕES DE EXECUÇÃO
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ OPÇÃO A: PROVIDENCIAR APIs AGORA (Recomendado para YOLO Mode)             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+VOCÊ FAZ:
+  1. Collect 8 API keys (30 min)
+     - CoinGecko, Binance, Etherscan (PRIORITY)
+     - Solscan, 1inch, 0x, Dune, DefiLlama (OPTIONAL)
+     See: docs/API_SETUP.md for step-by-step
+
+  2. Configure .env (5 min)
+     cd /root/projects/crypto-investment-advisor
+     cp .env.example .env
+     # Paste your keys
+
+  3. Test (1 min)
+     npm install
+     npm run analyze
+
+  4. Answer 5 questions (2 min)
+     - API priority
+     - Trading strategy (swing/momentum/altcoin)
+     - Risk tolerance (conservative/moderate/aggressive)
+     - Alert preference (WhatsApp/email/Discord)
+     - Frequency (hourly/4h/daily/realtime)
+
+  TEMPO TOTAL: ~40 minutos
+
+EU FAÇO:
+  1. Implement monitoring scripts (2-3 horas)
+     - monitor-signals.ts (top 100 analysis)
+     - scan-launches.ts (altcoin discovery)
+     - generate-report.ts (daily brief)
+
+  2. Setup Hermes cron jobs (1 hora)
+     - Hourly signals
+     - 4-hourly altcoin scans
+     - Daily 7 AM briefing
+
+  3. Deploy to production (30 min)
+     - Test with real data
+     - Configure alerts
+     - Start monitoring
+
+  4. Backtesting & optimization (2-3 horas) [optional]
+     - Validate win rate
+     - Adjust thresholds if needed
+
+  TEMPO TOTAL: ~2.5-3.5 horas
+
+RESULTADO: Sistema 24/7 gerando oportunidades em 3-4 HORAS
+            ⏰ Você: hoje à noite (40 min)
+            ⏰ Eu: amanhã (2.5-3.5h)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ OPÇÃO B: COMEÇAR COM TESTES (Sem APIs Ainda)                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+EU FAÇO AGORA:
+  1. Implement unit tests (1-2 horas)
+     - test-technical.ts (RSI/MACD/SMA validation)
+     - test-onchain.ts (whale tracking mock)
+     - test-altcoin.ts (scoring algorithm)
+
+  2. Create example outputs (30 min)
+     - Signal example (top 100)
+     - Altcoin opportunity example
+     - Report template example
+
+  3. Validate data structures (30 min)
+     - TypeScript interfaces
+     - JSON schemas
+     - Error handling
+
+  TEMPO TOTAL: ~2 horas
+
+VOCÊ FAZ DEPOIS:
+  1. Review test outputs
+  2. Collect API keys (30 min)
+  3. Provide integration decisions
+  4. I implement real integration (2-3 horas)
+
+RESULTADO: Sistema pronto em 3-6 HORAS
+            ⏰ Eu: agora (2h)
+            ⏰ Você: tomorrow (30 min prep + approval)
+            ⏰ Eu: integration (2.5-3.5h)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║ OPÇÃO C: SUA PREFERÊNCIA (Me diz)                                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Qualquer outra abordagem ou variação que você prefira.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## CHECKLIST DE DECISÕES (5 PERGUNTAS)
+
+Quando for providenciar as chaves ou decidir pelo Opção B, responda:
+
+[ ] 1. APIs: Qual prioridade?
+      • Apenas top 3 (CoinGecko + Binance + Etherscan)
+      • + Altcoins (Solscan + 1inch)
+      • Todas as 8
+
+[ ] 2. Estratégia: Qual alvo?
+      • Swing trading (7-60 dias)
+      • Momentum (horas-dias)
+      • Altcoin hunting (longo prazo)
+      • Todas as 3
+
+[ ] 3. Risco: Tolerância?
+      • Conservative (55-60% win rate)
+      • Moderate (60-70% win rate)
+      • Aggressive (70%+ win rate)
+
+[ ] 4. Alertas: Como receber?
+      • WhatsApp (via Hermes)
+      • Email
+      • Discord webhook
+      • Dashboard web
+      • Todos
+
+[ ] 5. Frequência: Cadência?
+      • Hourly (top 100 coins)
+      • 4-hourly (altcoins)
+      • Daily (7 AM briefing)
+      • Real-time (24/7)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## REFERÊNCIA RÁPIDA
+
+Documentação criada:
+  ✅ README.md (quick start)
+  ✅ docs/API_SETUP.md (8 APIs com step-by-step)
+  ✅ IMPLEMENTATION_PLAN.md (6 fases detalhadas)
+  ✅ NEXT_STEPS.md (ações imediatas)
+  ✅ config/analysis.json (thresholds customizáveis)
+  ✅ CHECKLIST.txt (visual setup checklist)
+  ✅ LAUNCH_STATUS.md (status de conclusão)
+
+API priorities:
+  🔴 CRITICAL: CoinGecko, Binance, Etherscan (15 min)
+  🟡 IMPORTANT: Solscan, 1inch (10 min)
+  🟢 OPTIONAL: 0x, Dune, DefiLlama (5 min)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## PRÓXIMA AÇÃO IMEDIATA
+
+Responda UMA das opções abaixo via WhatsApp:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ OPÇÃO A: Quero providenciar APIs agora                                  │
+│          (Sistema 24/7 em 3-4 horas)                                    │
+│                                                                         │
+│ OPÇÃO B: Quero começar com testes (sem APIs ainda)                     │
+│          (Prepara agora, ativa depois com suas chaves)                 │
+│                                                                         │
+│ OPÇÃO C: Outra preferência                                             │
+│          (Me diz o que você quer)                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Qualquer uma das opções = Sistema produção completo em < 6 horas.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## TIMELINE
+
+Com Opção A (APIs agora):
+  hoje 19h  → Você providencia chaves (40 min)
+  amanhã 9h → Eu termino implementação (2.5-3h)
+  amanhã 12h→ Sistema LIVE gerando sinais
+
+Com Opção B (testes agora):
+  agora      → Eu faço testes (2h)
+  você vê   → Aprova output exemplo
+  depois    → Você providencia chaves (30 min)
+  depois    → Eu integra (2-3h)
+  total     → 3-6 horas até live
+
+═══════════════════════════════════════════════════════════════════════════════
+
+**Qual é sua escolha: A, B, ou C?**
