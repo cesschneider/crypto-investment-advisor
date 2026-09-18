@@ -13,8 +13,8 @@
     "monitor": "ts-node src/scripts/monitor-signals.ts"
   },
   "dependencies": {
-    "axios": "^1.6.0",
-    "dotenv": "^16.0.0"
+    "axios": "^1.20.0",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
