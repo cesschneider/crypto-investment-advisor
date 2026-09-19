@@ -37,17 +37,45 @@ export class TechnicalAnalyzer {
     return ema;
   }
 
-  generateSignal(symbol: string, prices: number[]): { signal: string; confidence: number } {
+  generateSignal(symbol: string, prices: number[]): { 
+    signal: string; 
+    confidence: number;
+    symbol: string;
+    timestamp: string;
+    indicators: {
+      rsi: number;
+      macd: { macd: number; signal: number; histogram: number };
+      bollinger: { upper: number; middle: number; lower: number };
+    }
+  } {
+    if (!prices || prices.length < 2) {
+      throw new Error('Need at least 2 prices to generate signal');
+    }
+    
     const rsi = this.calculateRSI(prices);
     const macd = this.calculateMACD(prices);
     const bb = this.calculateBollingerBands(prices);
     
     let confidence = 50;
-    if (rsi < 30) { confidence += 30; return { signal: 'BUY', confidence }; }
-    if (rsi > 70) { confidence += 30; return { signal: 'SELL', confidence }; }
-    if (macd.histogram > 0) confidence += 15;
-    if (prices[prices.length - 1] < bb.lower) confidence += 20;
+    let signal = 'HOLD';
     
-    return { signal: 'HOLD', confidence };
+    if (rsi < 30) { confidence += 30; signal = 'BUY'; }
+    else if (rsi > 70) { confidence += 30; signal = 'SELL'; }
+    else if (macd.histogram > 0) { confidence += 15; signal = 'BUY'; }
+    else if (macd.histogram < 0) { confidence += 15; signal = 'SELL'; }
+    
+    if (prices[prices.length - 1] < bb.lower) confidence += 20;
+    if (prices[prices.length - 1] > bb.upper) confidence -= 20;
+    
+    // Clamp confidence
+    confidence = Math.max(0, Math.min(100, confidence));
+    
+    return { 
+      signal, 
+      confidence,
+      symbol,
+      timestamp: new Date().toISOString(),
+      indicators: { rsi, macd, bollinger: bb }
+    };
   }
 }
