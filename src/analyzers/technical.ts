@@ -1,3 +1,16 @@
+/**
+ * Technical Analyzer
+ * Calculates technical indicators: RSI, MACD, SMA, support/resistance
+ */
+
+interface Candle {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 class TechnicalAnalyzer {
   /**
    * Calculate RSI (Relative Strength Index)

@@ -3,7 +3,7 @@
  * Validates RSI, MACD, SMA calculations and signal generation
  */
 
-import TechnicalAnalyzer from '../src/analyzers/technical';
+import TechnicalAnalyzer from '../analyzers/technical';
 
 describe('TechnicalAnalyzer', () => {
   

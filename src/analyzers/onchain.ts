@@ -92,11 +92,21 @@ class OnChainAnalyzer {
     safetyScore: number;
     redFlags: string[];
   } {
+    if (!contractData) {
+      return {
+        isVerified: false,
+        hasRenounced: false,
+        isMintable: false,
+        safetyScore: 0,
+        redFlags: ['No contract data available']
+      };
+    }
+
     const redFlags: string[] = [];
     let safetyScore = 100;
 
     // Check if contract is verified
-    const isVerified = contractData && contractData.SourceCode && contractData.SourceCode.length > 0;
+    const isVerified = !!(contractData && contractData.SourceCode && contractData.SourceCode.length > 0);
     if (!isVerified) {
       safetyScore -= 30;
       redFlags.push('Contract not verified on explorer');

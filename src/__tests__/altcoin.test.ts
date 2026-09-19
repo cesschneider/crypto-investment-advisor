@@ -3,7 +3,7 @@
  * Validates token scoring and opportunity detection
  */
 
-import AltcoinAnalyzer from '../src/analyzers/altcoin';
+import AltcoinAnalyzer from '../analyzers/altcoin';
 
 describe('AltcoinAnalyzer', () => {
 
