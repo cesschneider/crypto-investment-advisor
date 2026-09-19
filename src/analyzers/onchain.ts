@@ -82,9 +82,6 @@ class OnChainAnalyzer {
     };
   }
 
-  /**
-   * Assess contract safety and verification
-   */
   static assessContractSafety(contractData: any): {
     isVerified: boolean;
     hasRenounced: boolean;
@@ -95,30 +92,41 @@ class OnChainAnalyzer {
     const redFlags: string[] = [];
     let safetyScore = 100;
 
-    // Check if contract is verified
-    const isVerified = contractData && contractData.SourceCode && contractData.SourceCode.length > 0;
+    // Handle null/undefined contract data
+    if (!contractData) {
+      return {
+        isVerified: false,
+        hasRenounced: false,
+        isMintable: false,
+        safetyScore: 0,
+        redFlags: ['No contract data available']
+      };
+    }
+
+    // Check if contract is verified (must have non-empty SourceCode)
+    const isVerified = !!(contractData.SourceCode && contractData.SourceCode.length > 0);
     if (!isVerified) {
       safetyScore -= 30;
       redFlags.push('Contract not verified on explorer');
     }
 
     // Check for admin functions (simplified)
-    const hasAdminFunctions = contractData && contractData.SourceCode && 
-      (contractData.SourceCode.includes('owner') || contractData.SourceCode.includes('admin'));
+    const hasAdminFunctions = !!(contractData.SourceCode && 
+      (contractData.SourceCode.includes('owner') || contractData.SourceCode.includes('admin')));
     if (hasAdminFunctions) {
       redFlags.push('Contract has admin/owner functions');
     }
 
     // Check for mint function
-    const isMintable = contractData && contractData.SourceCode && 
-      contractData.SourceCode.includes('mint(');
+    const isMintable = !!(contractData.SourceCode && 
+      contractData.SourceCode.includes('mint('));
     if (isMintable) {
       safetyScore -= 15;
       redFlags.push('Contract is mintable (supply can be increased)');
     }
 
     // Check for proxy pattern (upgradeable = risk)
-    const isProxy = contractData && contractData.Proxy === '1';
+    const isProxy = contractData.Proxy === '1';
     if (isProxy) {
       safetyScore -= 20;
       redFlags.push('Contract is upgradeable (proxy pattern)');

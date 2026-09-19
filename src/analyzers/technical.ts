@@ -1,3 +1,5 @@
+import { Candle } from '../types/index';
+
 class TechnicalAnalyzer {
   /**
    * Calculate RSI (Relative Strength Index)

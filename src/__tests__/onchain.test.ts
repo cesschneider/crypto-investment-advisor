@@ -3,7 +3,7 @@
  * Validates whale tracking and contract safety
  */
 
-import OnChainAnalyzer from '../src/analyzers/onchain';
+import OnChainAnalyzer from '../analyzers/onchain';
 
 describe('OnChainAnalyzer', () => {
 
@@ -100,7 +100,7 @@ describe('OnChainAnalyzer', () => {
       const result = OnChainAnalyzer.assessContractSafety(contractData);
       
       expect(result.isMintable).toBe(true);
-      expect(result.redFlags.some(f => f.toLowerCase().includes('mint'))).toBe(true);
+      expect(result.redFlags.some((f: string) => f.toLowerCase().includes('mint'))).toBe(true);
     });
 
     test('should handle null contract data', () => {
@@ -130,7 +130,7 @@ describe('OnChainAnalyzer', () => {
       const result = OnChainAnalyzer.analyzeLiquidityPool(lpData);
       
       expect(result.liquidityScore).toBeLessThan(70);
-      expect(result.risks.some(r => r.includes('$'))).toBe(true);
+      expect(result.risks.some((r: string) => r.includes('$'))).toBe(true);
     });
 
     test('should flag mostly unlocked liquidity', () => {
@@ -140,7 +140,7 @@ describe('OnChainAnalyzer', () => {
       };
       const result = OnChainAnalyzer.analyzeLiquidityPool(lpData);
       
-      expect(result.risks.some(r => r.toLowerCase().includes('locked'))).toBe(true);
+      expect(result.risks.some((r: string) => r.toLowerCase().includes('locked'))).toBe(true);
     });
   });
 });

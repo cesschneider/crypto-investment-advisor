@@ -1,4 +1,16 @@
 /**
+ * OHLCV Candle Data Structure
+ */
+export interface Candle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/**
  * Altcoin Opportunity Scoring System
  * 
  * Score breakdown (0-100):
