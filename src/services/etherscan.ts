@@ -5,7 +5,7 @@ const logger = new Logger('EtherscanService');
 
 export class EtherscanService {
   private api: AxiosInstance;
-  private readonly BASE_URL = 'https://api.etherscan.io/api';
+  private readonly BASE_URL = 'https://api.etherscan.io/v2/api';
   private readonly API_KEY = process.env.ETHERSCAN_API_KEY || '';
   private requestCount = 0;
   private lastReset = Date.now();
@@ -35,10 +35,11 @@ export class EtherscanService {
     await this.checkRateLimit();
     const response = await this.api.get('', {
       params: {
+        chainid: 1,
         module: 'account',
         action: 'balance',
         address,
-        apikey: this.API_KEY,
+        apikey: this.API_KEY
       },
     });
     if (response.data.status === '0') throw new Error(response.data.message);
@@ -49,6 +50,7 @@ export class EtherscanService {
     await this.checkRateLimit();
     const response = await this.api.get('', {
       params: {
+        chainid: 1,
         module: 'account',
         action: 'txlist',
         address,
@@ -66,6 +68,7 @@ export class EtherscanService {
     await this.checkRateLimit();
     const response = await this.api.get('', {
       params: {
+        chainid: 1,
         module: 'account',
         action: 'tokentx',
         address,
