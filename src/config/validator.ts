@@ -1,0 +1,1 @@
+export class EnvValidator { static validate(): boolean { const required = ["BINANCE_API_KEY", "ETHERSCAN_API_KEY"]; for (const key of required) { if (!process.env[key]) throw new Error(`Missing ${key}`); } return true; } }
