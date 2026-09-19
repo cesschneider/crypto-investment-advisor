@@ -4,6 +4,7 @@ import etherscanService from './services/etherscan';
 import solscanService from './services/solscan';
 import { TechnicalAnalyzer } from './analyzers/technical';
 import { OnChainAnalyzer } from './analyzers/onchain';
+import { PaperTradingService } from './paper-trading/service';
 import * as fs from 'fs';
 
 // Load environment variables
@@ -25,10 +26,12 @@ interface Signal {
 class CryptoAdvisor {
   private technical: TechnicalAnalyzer;
   private onchain: OnChainAnalyzer;
+  private paperTrading: PaperTradingService;
 
   constructor() {
     this.technical = new TechnicalAnalyzer();
     this.onchain = new OnChainAnalyzer();
+    this.paperTrading = new PaperTradingService(10000); // $10,000 simulated capital
   }
 
   async generateHourlySignals(): Promise<Signal[]> {
@@ -79,6 +82,30 @@ class CryptoAdvisor {
     }
   }
 
+  async executePaperTrades(signals: Signal[]): Promise<void> {
+    console.log(`\n[${new Date().toISOString()}] Executing paper trades on ${signals.length} signals...`);
+    
+    const results = await this.paperTrading.processBatchSignals(signals);
+    
+    // Log summary
+    const executedTrades = results.filter(r => r.tradeExecuted);
+    console.log(`\n📊 Paper Trading Summary:`);
+    console.log(`  Total Signals: ${results.length}`);
+    console.log(`  Trades Executed: ${executedTrades.length}`);
+    
+    if (results.length > 0) {
+      const lastResult = results[results.length - 1];
+      const portfolio = lastResult.portfolio;
+      console.log(`  Portfolio Value: $${(portfolio.availableBalance + portfolio.positionsValue).toFixed(2)}`);
+      console.log(`  Total P&L: $${portfolio.totalPnL.toFixed(2)} (${portfolio.totalReturn.toFixed(2)}%)`);
+      console.log(`  Realized P&L: $${portfolio.realizedPnL.toFixed(2)}`);
+      console.log(`  Unrealized P&L: $${portfolio.unrealizedPnL.toFixed(2)}`);
+      console.log(`  Win Rate: ${portfolio.winRate.toFixed(2)}%`);
+      console.log(`  Open Positions: ${portfolio.openPositions}`);
+      console.log(`  Closed Positions: ${portfolio.closedPositions}`);
+    }
+  }
+
   async runHourly(): Promise<void> {
     console.log('\n' + '='.repeat(80));
     console.log('🚀 CRYPTO INVESTMENT ADVISOR - HOURLY RUN');
@@ -88,6 +115,9 @@ class CryptoAdvisor {
       // Generate technical signals
       const signals = await this.generateHourlySignals();
       console.log(`\n📊 Generated ${signals.length} signals`);
+
+      // Execute paper trades
+      await this.executePaperTrades(signals);
 
       // Track whale activity
       await this.trackWhaleActivity();
@@ -103,6 +133,9 @@ class CryptoAdvisor {
       const existingSignals = fs.existsSync(signalFile) ? JSON.parse(fs.readFileSync(signalFile, 'utf-8')) : [];
       fs.writeFileSync(signalFile, JSON.stringify([...existingSignals, ...signals], null, 2));
       console.log(`\n💾 Signals saved to ${signalFile}`);
+
+      // Save paper trading report
+      await this.paperTrading.saveReport();
 
       console.log('\n✅ Hourly run completed successfully\n');
     } catch (error) {
@@ -120,6 +153,7 @@ class CryptoAdvisor {
     console.log('  ⏳ CoinGecko API - Disabled (awaiting API key)');
     console.log('  ⏳ Altcoin Discovery - Disabled (requires CoinGecko)');
     console.log('  ⏳ DefiLlama Integration - Disabled (optional)');
+    console.log('  ✅ Paper Trading - ACTIVE ($10,000 simulated capital)');
     console.log('');
 
     // Run immediately
