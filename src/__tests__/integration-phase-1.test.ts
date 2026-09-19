@@ -80,7 +80,7 @@ describe('=== PHASE 1: INTEGRATION TESTS (40 tests) ===', () => {
         // Rate limit handling should not throw uncaught
         expect(e).toBeDefined();
       }
-    });
+    }, 10000);
 
     it('should include volume data in klines', async () => {
       const prices = await binance.getKlines('BTC', '1h', 5);
