@@ -23,7 +23,10 @@ export class EtherscanService {
       this.requestCount = 0;
       this.lastReset = now;
     }
-    if (this.requestCount >= 5) {
+    // Etherscan free tier caps at 5 req/sec and rejects bursty 5-per-second with
+    // "Max calls per sec" (NOTOK). Throttle conservatively to 3 req/sec (1,000ms
+    // window) so integration tests stay under the real API limit.
+    if (this.requestCount >= 3) {
       await new Promise(resolve => setTimeout(resolve, 1000 - (now - this.lastReset)));
       this.requestCount = 0;
       this.lastReset = Date.now();
