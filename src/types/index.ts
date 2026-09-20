@@ -114,3 +114,90 @@ export interface WhaleActivity {
   // Impact
   potential_impact: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
 }
+
+/**
+ * Multi-factor Signal Scoring System (Epic 3)
+ * Confidence is evidence-strength (0-100), NOT win probability.
+ * No single indicator alone triggers a trade; must have supporting evidence from 2+ dimensions.
+ */
+
+export type SignalAction = 
+  | 'STRONG_BUY'
+  | 'BUY'
+  | 'WEAK_BUY'
+  | 'HOLD'
+  | 'WEAK_SELL'
+  | 'SELL'
+  | 'STRONG_SELL'
+  | 'INSUFFICIENT_DATA'
+  | 'NO_TRADE';
+
+export interface ScoringInputs {
+  // Metadata
+  symbol: string;
+  timestamp: string;
+  
+  // Trend dimension (1D+)
+  trend?: 'UPTREND' | 'DOWNTREND' | 'SIDEWAYS';
+  trend_strength?: number; // 0-100
+  
+  // Momentum dimension (4H/1H)
+  rsi_14?: number; // 0-100
+  macd_histogram?: number; // can be negative
+  
+  // Structure dimension (support/resistance)
+  price?: number;
+  supports?: number[];
+  resistances?: number[];
+  
+  // Volume dimension
+  volume_24h?: number;
+  volume_7d?: number;
+  volume_avg_30d?: number;
+  
+  // Derivatives (funding rate, open interest, etc.)
+  funding_rate?: number; // can be negative
+  open_interest_change?: number; // % change
+  
+  // On-chain (whale activity, holder distribution, etc.)
+  whale_accumulation?: number; // -100 to 100
+  holder_concentration?: number; // 0-100 (lower is better)
+  
+  // Macro (risk-on/off, economic calendar, etc.)
+  macro_regime?: 'RISK_ON' | 'RISK_OFF' | 'NEUTRAL';
+  macro_strength?: number; // 0-100
+  
+  // Sentiment (social, news, etc.)
+  sentiment_score?: number; // -100 to 100
+  
+  // Data freshness
+  data_age_seconds?: { [key: string]: number }; // track staleness per dimension
+}
+
+export interface DimensionScore {
+  dimension: string;
+  score: number; // 0-100
+  evidence: string; // human-readable explanation
+  contributing?: boolean; // did this dimension contribute to final decision?
+}
+
+export interface ScoringResult {
+  symbol: string;
+  timestamp: string;
+  
+  // Decision
+  action: SignalAction;
+  confidence: number; // 0-100, evidence strength
+  
+  // Breakdown
+  score: number; // 0-100, weighted average
+  dimensions: DimensionScore[];
+  
+  // Audit trail
+  trace: { [dimension: string]: { score: number; evidence: string } };
+  supporting_dimensions_count: number; // how many dimensions support the action?
+  
+  // Data quality
+  data_freshness_issues?: string[]; // note stale or missing critical data
+  insufficient_data?: boolean;
+}
