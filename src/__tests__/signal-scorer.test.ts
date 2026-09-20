@@ -548,3 +548,59 @@ describe('SignalScorer', () => {
     });
   });
 });
+
+describe('SignalStrength enum and confidence mapping', () => {
+  const { confidenceToStrength } = require('../types/index');
+  const validStrengths = ['VERY_WEAK', 'WEAK', 'MODERATE', 'STRONG', 'VERY_STRONG'];
+
+  test('ScoringResult includes a valid strength field', () => {
+    const scorer = new SignalScorer();
+    const result = scorer.score({
+      symbol: 'BTC',
+      timestamp: new Date().toISOString(),
+      trend: 'UPTREND',
+      trend_strength: 70,
+      rsi_14: 60,
+      macd_histogram: 0.015
+    });
+    expect(validStrengths).toContain(result.strength);
+  });
+
+  test('confidenceToStrength maps confidence to correct bucket', () => {
+    expect(confidenceToStrength(10)).toBe('VERY_WEAK');
+    expect(confidenceToStrength(20)).toBe('VERY_WEAK');
+    expect(confidenceToStrength(30)).toBe('WEAK');
+    expect(confidenceToStrength(40)).toBe('WEAK');
+    expect(confidenceToStrength(50)).toBe('MODERATE');
+    expect(confidenceToStrength(60)).toBe('MODERATE');
+    expect(confidenceToStrength(70)).toBe('STRONG');
+    expect(confidenceToStrength(80)).toBe('STRONG');
+    expect(confidenceToStrength(90)).toBe('VERY_STRONG');
+    expect(confidenceToStrength(100)).toBe('VERY_STRONG');
+  });
+
+  test('strength is consistent with confidence on output', () => {
+    const scorer = new SignalScorer();
+    const result = scorer.score({
+      symbol: 'ETH',
+      timestamp: new Date().toISOString(),
+      trend: 'UPTREND',
+      trend_strength: 80,
+      rsi_14: 55,
+      macd_histogram: 0.02,
+      whale_accumulation: 60,
+      macro_regime: 'RISK_ON'
+    });
+    expect(confidenceToStrength(result.confidence)).toBe(result.strength);
+  });
+
+  test('INSUFFICIENT_DATA action is a first-class outcome for missing critical data', () => {
+    const scorer = new SignalScorer();
+    const result = scorer.score({
+      symbol: 'SOL',
+      timestamp: new Date().toISOString(),
+      rsi_14: 25
+    });
+    expect(['INSUFFICIENT_DATA', 'NO_TRADE', 'HOLD']).toContain(result.action);
+  });
+});
