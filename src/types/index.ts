@@ -234,3 +234,18 @@ export function confidenceToStrength(confidence: number): SignalStrength {
   if (confidence <= 80) return 'STRONG';
   return 'VERY_STRONG';
 }
+
+// Re-export the structured schema for signal I/O contract
+export {
+  DataSource,
+  DecisionFactor,
+  ContradictoryFactor,
+  TradeSetup,
+  RiskAssessment,
+  MarketAssessment,
+  SignalInput,
+  SignalOutput,
+  ValidationError,
+  validateSignalInput,
+  createInsufficientDataResponse,
+} from './SignalSchema';
