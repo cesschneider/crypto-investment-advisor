@@ -2,7 +2,8 @@ import {
   ScoringInputs,
   ScoringResult,
   SignalAction,
-  DimensionScore
+  DimensionScore,
+  confidenceToStrength
 } from '../types/index';
 
 /**
@@ -80,6 +81,7 @@ export class SignalScorer {
       timestamp,
       action: result.action,
       confidence: result.confidence,
+      strength: confidenceToStrength(result.confidence),
       score: result.score,
       dimensions,
       trace,
