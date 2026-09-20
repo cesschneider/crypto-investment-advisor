@@ -121,6 +121,11 @@ export interface WhaleActivity {
  * No single indicator alone triggers a trade; must have supporting evidence from 2+ dimensions.
  */
 
+/**
+ * Signal action (direction + conviction).
+ * INSUFFICIENT_DATA: critical data missing or stale, cannot form opinion.
+ * NO_TRADE: data valid but execution conditions unfavorable (low liquidity, high spread, etc).
+ */
 export type SignalAction = 
   | 'STRONG_BUY'
   | 'BUY'
@@ -131,6 +136,22 @@ export type SignalAction =
   | 'STRONG_SELL'
   | 'INSUFFICIENT_DATA'
   | 'NO_TRADE';
+
+/**
+ * Signal strength classification (confidence category).
+ * Used to categorize confidence score (0-100) into qualitative buckets.
+ * VERY_WEAK: 0-20 (minimal evidence)
+ * WEAK: 21-40 (weak evidence, risky)
+ * MODERATE: 41-60 (mixed evidence, cautious)
+ * STRONG: 61-80 (strong evidence, high confidence)
+ * VERY_STRONG: 81-100 (overwhelming evidence, max confidence)
+ */
+export type SignalStrength =
+  | 'VERY_WEAK'
+  | 'WEAK'
+  | 'MODERATE'
+  | 'STRONG'
+  | 'VERY_STRONG';
 
 export interface ScoringInputs {
   // Metadata
@@ -188,6 +209,7 @@ export interface ScoringResult {
   // Decision
   action: SignalAction;
   confidence: number; // 0-100, evidence strength
+  strength: SignalStrength; // qualitative strength bucket
   
   // Breakdown
   score: number; // 0-100, weighted average
@@ -200,4 +222,15 @@ export interface ScoringResult {
   // Data quality
   data_freshness_issues?: string[]; // note stale or missing critical data
   insufficient_data?: boolean;
+}
+
+/**
+ * Map a confidence score (0-100) to a SignalStrength category.
+ */
+export function confidenceToStrength(confidence: number): SignalStrength {
+  if (confidence <= 20) return 'VERY_WEAK';
+  if (confidence <= 40) return 'WEAK';
+  if (confidence <= 60) return 'MODERATE';
+  if (confidence <= 80) return 'STRONG';
+  return 'VERY_STRONG';
 }
