@@ -71,7 +71,10 @@ class BinanceService {
   constructor() {
     this.apiKey = process.env.BINANCE_API_KEY || '';
     this.secretKey = process.env.BINANCE_SECRET_KEY || '';
-    this.initializeHttpClient();
+    // NOTE: do NOT initialize the HTTP client eagerly here. The singleton is
+    // constructed at module import time, before Jest can install the axios
+    // mock — an eager axios.create() would bind a real client and tests would
+    // hit the live API. The client is created lazily in getHttpClient().
     logger.debug('BinanceService initialized');
   }
 
@@ -104,6 +107,9 @@ class BinanceService {
       state: 'CLOSED'
     };
     this.requestTimestamps = [];
+    // Drop the cached HTTP client so the next request re-creates it through
+    // the (possibly mocked) axios. This lets tests override the client.
+    this.httpClient = undefined;
   }
 
   /**
@@ -245,7 +251,9 @@ class BinanceService {
         high: parseFloat(kline[2]),
         low: parseFloat(kline[3]),
         close: parseFloat(kline[4]),
-        volume: parseFloat(kline[7])
+        // Binance kline: [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
+        // volume is index 5; index 7 is quote asset volume.
+        volume: parseFloat(kline[5])
       })) as KlineData[];
 
       // Validate OHLC ordering
