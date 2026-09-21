@@ -219,6 +219,42 @@ export class PaperTradingExecutor {
   get openPositions(): PaperPosition[] {
     return Array.from(this.positions.values());
   }
+
+  /** Serializable state for persistence across process restarts. */
+  exportState(): {
+    initialCapital: number;
+    cash: number;
+    peakEquity: number;
+    tradeCounter: number;
+    positions: PaperPosition[];
+    closedTrades: ClosedTrade[];
+  } {
+    return {
+      initialCapital: this.initialCapital,
+      cash: this.cash,
+      peakEquity: this.peakEquity,
+      tradeCounter: this.tradeCounter,
+      positions: Array.from(this.positions.values()),
+      closedTrades: [...this.closedTrades],
+    };
+  }
+
+  /** Restore state from a prior run (idempotent). */
+  restoreState(state: {
+    initialCapital: number;
+    cash: number;
+    peakEquity: number;
+    tradeCounter: number;
+    positions: PaperPosition[];
+    closedTrades: ClosedTrade[];
+  }): void {
+    this.initialCapital = state.initialCapital ?? this.initialCapital;
+    this.cash = state.cash ?? this.cash;
+    this.peakEquity = state.peakEquity ?? this.peakEquity;
+    this.tradeCounter = state.tradeCounter ?? this.tradeCounter;
+    this.positions = new Map((state.positions ?? []).map((p) => [p.symbol, p]));
+    this.closedTrades = [...(state.closedTrades ?? [])];
+  }
 }
 
 export default PaperTradingExecutor;

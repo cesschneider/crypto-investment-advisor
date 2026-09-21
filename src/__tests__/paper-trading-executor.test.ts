@@ -88,4 +88,30 @@ describe('PaperTradingExecutor', () => {
     expect(again).toBe(false);
     expect(ex.openPositions).toHaveLength(1);
   });
+
+  test('exportState/restoreState round-trips portfolio across restarts', () => {
+    const ex = new PaperTradingExecutor(10000, getProfile('moderate'));
+    ex.openPosition(engineResult('BTC'), new Date().toISOString());
+    const state = ex.exportState();
+    expect(state.positions).toHaveLength(1);
+    expect(state.cash).toBeLessThan(10000);
+
+    // Simulate a fresh process: new executor restored from persisted state.
+    const restored = new PaperTradingExecutor(10000, getProfile('moderate'));
+    restored.restoreState(state);
+    expect(restored.openPositions).toHaveLength(1);
+    expect(restored.openPositions[0].symbol).toBe('BTC');
+    const snap = restored.snapshot({ BTC: 100 });
+    expect(snap.equity).toBeCloseTo(10000, 5); // cash reduced by size, offset by position value
+    expect(snap.total_return_pct).toBeGreaterThan(-0.01);
+  });
+
+  test('restoreState is idempotent with empty state', () => {
+    const ex = new PaperTradingExecutor(10000, getProfile('conservative'));
+    ex.openPosition(engineResult('ADA'), new Date().toISOString());
+    const before = ex.openPositions.length;
+    ex.restoreState({ initialCapital: 10000, cash: 9800, peakEquity: 10000, tradeCounter: 0, positions: [], closedTrades: [] });
+    expect(ex.openPositions).toHaveLength(0);
+    expect(before).toBe(1);
+  });
 });
