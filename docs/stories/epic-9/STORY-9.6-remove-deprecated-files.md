@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Done
 story_id: 9.6
 epic: 9
 title: "Remove deprecated/legacy files"
