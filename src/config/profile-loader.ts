@@ -50,6 +50,10 @@ export function loadConfig(
   name: RiskProfileName = 'moderate',
   overrides: Partial<AdvisorConfig> = {},
 ): AdvisorConfig {
+  const known: RiskProfileName[] = ['conservative', 'moderate', 'aggressive'];
+  if (!known.includes(name)) {
+    throw new Error(`Unknown investor profile: ${name}`);
+  }
   const fileOverride = loadProfileOverride(name);
   let config = { ...DEFAULT_ADVISOR_CONFIG, name, label: DEFAULT_ADVISOR_CONFIG.label };
   if (fileOverride) {

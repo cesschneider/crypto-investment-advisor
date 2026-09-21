@@ -1,5 +1,5 @@
 import { SignalEngine } from '../engine/signal-engine';
-import { getProfile } from '../profiles/investor-profile';
+import { loadConfig } from '../config/profile-loader';
 import { Candle } from '../services/MultiTimeframeAnalyzer';
 
 /** Build a deterministic synthetic uptrend candle series. */
@@ -87,7 +87,7 @@ describe('SignalEngine', () => {
       },
       portfolio: { equity: 10000, current_risk_usd: 0, positions: [] },
       candles,
-      profile: getProfile(profileName),
+      config: loadConfig(profileName),
     };
   }
 

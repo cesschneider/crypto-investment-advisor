@@ -21,7 +21,7 @@
 
 import { SignalEngine, EngineResult } from '../engine/signal-engine';
 import { ExitManager, ManagedPosition, ExitDecision } from '../engine/exit-manager';
-import { InvestorProfile } from '../profiles/investor-profile';
+import { AdvisorConfig } from '../config/advisor-config';
 
 /** An open position tracked by the paper portfolio. */
 export interface PaperPosition extends ManagedPosition {
@@ -62,7 +62,7 @@ export interface PaperPortfolioSnapshot {
 export class PaperTradingExecutor {
   private engine: SignalEngine;
   private exitManager: ExitManager;
-  private profile: InvestorProfile;
+  private config: AdvisorConfig;
 
   private initialCapital: number;
   private cash: number;
@@ -71,15 +71,15 @@ export class PaperTradingExecutor {
   private peakEquity: number;
   private tradeCounter = 0;
 
-  constructor(initialCapital: number, profile: InvestorProfile) {
+  constructor(initialCapital: number, config: AdvisorConfig) {
     this.initialCapital = initialCapital;
     this.cash = initialCapital;
     this.peakEquity = initialCapital;
-    this.profile = profile;
+    this.config = config;
     this.engine = new SignalEngine();
     this.exitManager = new ExitManager({
-      trailing_stop_pct: profile.trailing_stop_pct,
-      allow_signal_flip_exit: profile.allow_signal_flip_exit,
+      trailing_stop_pct: config.exit.trailing_stop_pct,
+      allow_signal_flip_exit: config.exit.allow_signal_flip_exit,
     });
   }
 
@@ -127,7 +127,7 @@ export class PaperTradingExecutor {
 
     // Enforce max exposure.
     const totalExposure = this.totalExposure(entry);
-    if (totalExposure + size > this.initialCapital * this.profile.max_exposure_pct) {
+    if (totalExposure + size > this.initialCapital * this.config.sizing.max_exposure_pct) {
       return false; // would exceed exposure cap
     }
     if (size > this.cash) return false; // not enough cash

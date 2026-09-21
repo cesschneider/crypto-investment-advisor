@@ -31,7 +31,7 @@ import { DerivativesAnalyzer, DerivativesInput } from '../services/DerivativesAn
 import { OnChainAnalyzer, OnChainInput } from '../services/OnChainAnalyzer';
 import { SentimentAnalyzer, SentimentInput } from '../services/SentimentAnalyzer';
 import { MacroAnalyzer, MacroInput } from '../services/MacroAnalyzer';
-import { InvestorProfile } from '../profiles/investor-profile';
+import { AdvisorConfig } from '../config/advisor-config';
 import { SignalAction } from '../types/index';
 
 /** OHLCV candles keyed by timeframe (subset actually supplied). */
@@ -60,8 +60,8 @@ export interface EngineInput {
   };
   /** OHLCV candles (e.g. 1H) for ATR-based stop/TP. */
   candles: Candle[];
-  /** The investor profile that parameterizes every tunable. */
-  profile: InvestorProfile;
+  /** The investor config (AdvisorConfig) that parameterizes every tunable. */
+  config: AdvisorConfig;
 }
 
 /** The structured engine verdict. */
@@ -142,7 +142,7 @@ export class SignalEngine {
   /** Run the full pipeline and return a structured verdict. */
   evaluate(input: EngineInput): EngineResult {
     const evidence: string[] = [];
-    const { profile } = input;
+    const { config } = input;
 
     // 1. Regime detection (1D candles when provided).
     let regime: Regime | undefined;
@@ -169,7 +169,7 @@ export class SignalEngine {
     //     If the current regime maps to a disabled strategy (and no enabled
     //     strategy applies), entry is vetoed. Otherwise the effective regime
     //     weight is recorded for explainability.
-    const strategyGate = this.applyStrategyTuning(regime, profile);
+    const strategyGate = this.applyStrategyTuning(regime, config);
     if (strategyGate.vetoed) {
       const reason = strategyGate.reason ?? 'strategy gate vetoed';
       return {
@@ -251,7 +251,7 @@ export class SignalEngine {
     }
 
     // 9. Profile confirmation gates.
-    if (profile.require_multi_timeframe_alignment && alignment && alignment.confirmation_flag === false) {
+    if (config.confirmation.require_multi_timeframe_alignment && alignment && alignment.confirmation_flag === false) {
       return {
         symbol: input.symbol,
         action: 'NO_TRADE',
@@ -266,7 +266,7 @@ export class SignalEngine {
         evidence,
       };
     }
-    if (profile.require_derivatives_confirmation && derivativesVerdict === 'CONTRADICTION') {
+    if (config.confirmation.require_derivatives_confirmation && derivativesVerdict === 'CONTRADICTION') {
       return {
         symbol: input.symbol,
         action: 'NO_TRADE',
@@ -280,7 +280,7 @@ export class SignalEngine {
         evidence,
       };
     }
-    if (profile.require_on_chain_confirmation && onchainVerdict === 'CONTRADICTION') {
+    if (config.confirmation.require_on_chain_confirmation && onchainVerdict === 'CONTRADICTION') {
       return {
         symbol: input.symbol,
         action: 'NO_TRADE',
@@ -295,12 +295,12 @@ export class SignalEngine {
     }
 
     // 10. Confidence threshold gate.
-    if (penalized.confidence < profile.min_confidence) {
+    if (penalized.confidence < config.min_confidence) {
       return {
         symbol: input.symbol,
         action: 'HOLD',
         confidence: penalized.confidence,
-        block_reason: `confidence ${penalized.confidence} below profile minimum ${profile.min_confidence}`,
+        block_reason: `confidence ${penalized.confidence} below profile minimum ${config.min_confidence}`,
         regime,
         derivatives_verdict: derivativesVerdict,
         onchain_verdict: onchainVerdict,
@@ -311,7 +311,7 @@ export class SignalEngine {
     }
 
     // 11. Drawdown circuit breaker (execution gate only).
-    const breaker = new DrawdownCircuitBreaker({ max_drawdown_pct: profile.max_drawdown_pct });
+    const breaker = new DrawdownCircuitBreaker({ max_drawdown_pct: config.drawdown.max_drawdown_pct });
     const breakerResult = breaker.canEnter(input.portfolio.equity);
     if (breakerResult.breached) {
       return {
@@ -370,16 +370,16 @@ export class SignalEngine {
 
     const volRegime = regime ? toVolatilityRegime(regime) : 'NEUTRAL';
     const riskCalc = new ATRBasedRiskCalculator({
-      // The profile's stop multiplier is the authoritative baseline; regime still
-      // scales it (tighter in low-vol, wider in high-vol).
-      neutral_multiplier: profile.stop_atr_multiplier,
-      low_vol_multiplier: profile.stop_atr_multiplier * 0.8,
-      high_vol_multiplier: profile.stop_atr_multiplier * 1.5,
-      tp1_atr_multiple: profile.tp1_atr_multiple,
-      tp2_atr_multiple: profile.tp2_atr_multiple,
-      min_reward_risk_ratio: profile.min_reward_risk_ratio,
+      // All stop multipliers come from config.risk (JSON-driven, no inline literals).
+      neutral_multiplier: config.risk.stop_atr_multiplier,
+      low_vol_multiplier: config.risk.low_vol_multiplier,
+      high_vol_multiplier: config.risk.high_vol_multiplier,
+      atr_period: config.risk.atr_period,
+      tp1_atr_multiple: config.risk.tp1_atr_multiple,
+      tp2_atr_multiple: config.risk.tp2_atr_multiple,
+      tp1_allocation: config.risk.tp1_allocation,
+      min_reward_risk_ratio: config.risk.min_reward_risk_ratio,
     });
-    // Use profile stop multiplier by overriding the neutral multiplier for the current vol regime.
     const riskResult = riskCalc.calculate(input.candles, entryPrice, volRegime);
 
     if (riskResult.verdict === 'INADEQUATE_RR') {
@@ -399,8 +399,8 @@ export class SignalEngine {
 
     // 14. Volatility-scaled position sizing.
     const sizer = new VolatilityScaledSizer({
-      max_position_pct: profile.max_position_pct,
-      max_portfolio_risk_pct: profile.max_portfolio_risk_pct,
+      max_position_pct: config.sizing.max_position_pct,
+      max_portfolio_risk_pct: config.sizing.max_portfolio_risk_pct,
     });
     const sizeResult = sizer.size({
       candles: input.candles,
@@ -466,9 +466,9 @@ export class SignalEngine {
    */
   private applyStrategyTuning(
     regime: Regime | undefined,
-    profile: InvestorProfile,
+    config: AdvisorConfig,
   ): { vetoed: boolean; reason?: string } {
-    const tuning = profile.strategy_tuning;
+    const tuning = config.strategy_tuning;
     const swing = tuning.swing;
     const daytrade = tuning.daytrade;
 
