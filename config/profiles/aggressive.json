@@ -1,0 +1,27 @@
+{
+  "name": "aggressive",
+  "label": "Aggressive (High Risk)",
+  "min_confidence": 50,
+  "sizing": {
+    "max_position_pct": 0.10,
+    "max_portfolio_risk_pct": 0.04,
+    "max_exposure_pct": 0.90
+  },
+  "risk": {
+    "stop_atr_multiplier": 1.5,
+    "tp1_atr_multiple": 1.8,
+    "tp2_atr_multiple": 3.0,
+    "min_reward_risk_ratio": 1.2
+  },
+  "drawdown": { "max_drawdown_pct": 25 },
+  "strategy_tuning": {
+    "swing": { "enabled": true, "rsi_oversold": 25, "rsi_overbought": 75, "buy_score_threshold": 55 },
+    "daytrade": { "enabled": true, "rsi_oversold": 20, "rsi_overbought": 80, "buy_score_threshold": 55 }
+  },
+  "confirmation": {
+    "require_multi_timeframe_alignment": false,
+    "require_derivatives_confirmation": false,
+    "require_on_chain_confirmation": false
+  },
+  "exit": { "allow_signal_flip_exit": true, "trailing_stop_pct": 0.02 }
+}

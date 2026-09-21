@@ -1,0 +1,27 @@
+{
+  "name": "conservative",
+  "label": "Conservative (Low Risk)",
+  "min_confidence": 75,
+  "sizing": {
+    "max_position_pct": 0.02,
+    "max_portfolio_risk_pct": 0.01,
+    "max_exposure_pct": 0.30
+  },
+  "risk": {
+    "stop_atr_multiplier": 0.8,
+    "tp1_atr_multiple": 1.2,
+    "tp2_atr_multiple": 2.0,
+    "min_reward_risk_ratio": 2.0
+  },
+  "drawdown": { "max_drawdown_pct": 10 },
+  "strategy_tuning": {
+    "swing": { "enabled": true, "rsi_oversold": 35, "rsi_overbought": 65, "buy_score_threshold": 65 },
+    "daytrade": { "enabled": false }
+  },
+  "confirmation": {
+    "require_multi_timeframe_alignment": true,
+    "require_derivatives_confirmation": true,
+    "require_on_chain_confirmation": true
+  },
+  "exit": { "allow_signal_flip_exit": true, "trailing_stop_pct": 0.01 }
+}
