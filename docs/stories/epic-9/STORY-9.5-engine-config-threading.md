@@ -1,5 +1,5 @@
 ---
-status: InProgress
+status: Done
 story_id: 9.5
 epic: 9
 title: "SignalEngine threads AdvisorConfig"
