@@ -21,9 +21,9 @@
 
 import { SignalScorer } from '../services/signal-scorer';
 import { ScoringInputs } from '../types/index';
-import { RegimeClassifier, Regime } from '../services/RegimeClassifier';
+import { RegimeClassifier, Regime, RegimeEnum } from '../services/RegimeClassifier';
 import { MultiTimeframeAnalyzer, Candle, Timeframe } from '../services/MultiTimeframeAnalyzer';
-import { StrategyWeighter } from '../services/StrategyWeighter';
+import { DEFAULT_STRATEGY_WEIGHTS } from '../services/StrategyWeighter';
 import { ATRBasedRiskCalculator, VolatilityRegime } from '../services/ATRRiskCalculator';
 import { VolatilityScaledSizer } from '../services/VolatilityScaledSizer';
 import { DrawdownCircuitBreaker } from '../services/DrawdownCircuitBreaker';
@@ -124,7 +124,6 @@ export class SignalEngine {
   private scorer: SignalScorer;
   private regimeClassifier: RegimeClassifier;
   private mtfAnalyzer: MultiTimeframeAnalyzer;
-  private weighter: StrategyWeighter;
   private derivativesAnalyzer: DerivativesAnalyzer;
   private onchainAnalyzer: OnChainAnalyzer;
   private sentimentAnalyzer: SentimentAnalyzer;
@@ -134,7 +133,6 @@ export class SignalEngine {
     this.scorer = new SignalScorer();
     this.regimeClassifier = new RegimeClassifier();
     this.mtfAnalyzer = new MultiTimeframeAnalyzer();
-    this.weighter = new StrategyWeighter();
     this.derivativesAnalyzer = new DerivativesAnalyzer();
     this.onchainAnalyzer = new OnChainAnalyzer();
     this.sentimentAnalyzer = new SentimentAnalyzer();
@@ -166,6 +164,26 @@ export class SignalEngine {
 
     // 3. Multi-factor score.
     const scorerResult = this.scorer.score(input.scoring);
+
+    // 3b. Strategy tuning gate: profile's per-strategy enablement + regime weights.
+    //     If the current regime maps to a disabled strategy (and no enabled
+    //     strategy applies), entry is vetoed. Otherwise the effective regime
+    //     weight is recorded for explainability.
+    const strategyGate = this.applyStrategyTuning(regime, profile);
+    if (strategyGate.vetoed) {
+      const reason = strategyGate.reason ?? 'strategy gate vetoed';
+      return {
+        symbol: input.symbol,
+        action: 'NO_TRADE',
+        confidence: 0,
+        block_reason: reason,
+        regime,
+        evidence: [...evidence, reason],
+      };
+    }
+    if (strategyGate.reason) {
+      evidence.push(strategyGate.reason);
+    }
 
     // 4. Macro verdict + confidence reduction.
     let macroReduction = 0;
@@ -436,6 +454,61 @@ export class SignalEngine {
       },
       evidence,
     };
+  }
+
+  /**
+   * Apply the profile's per-strategy tuning to the current regime.
+   *
+   * Determines which strategies are enabled under the current regime and their
+   * effective regime weights (from the profile's `strategy_tuning.regime_weights`
+   * override, falling back to the StrategyWeighter default table). Vetoes entry
+   * when the regime maps to zero enabled strategies.
+   */
+  private applyStrategyTuning(
+    regime: Regime | undefined,
+    profile: InvestorProfile,
+  ): { vetoed: boolean; reason?: string } {
+    const tuning = profile.strategy_tuning;
+    const swing = tuning.swing;
+    const daytrade = tuning.daytrade;
+
+    // Without a regime we cannot gate strategies — allow both (no veto).
+    if (!regime) {
+      return { vetoed: false };
+    }
+
+    // Build an effective weight table from the profile's regime-weight overrides.
+    const effectiveWeights = {
+      swing: { ...DEFAULT_STRATEGY_WEIGHTS.swing, ...swing.regime_weights },
+      daytrade: { ...DEFAULT_STRATEGY_WEIGHTS.daytrade, ...daytrade.regime_weights },
+    };
+
+    // Compute the weight each enabled strategy would carry in this regime.
+    const swingWeight = swing.enabled ? this.weighterWeight(effectiveWeights, 'swing', regime.regime) : 0;
+    const daytradeWeight = daytrade.enabled ? this.weighterWeight(effectiveWeights, 'daytrade', regime.regime) : 0;
+
+    // Veto when both strategies are disabled for this regime.
+    if (swingWeight <= 0 && daytradeWeight <= 0) {
+      return {
+        vetoed: true,
+        reason: `regime ${regime.regime}: no strategy enabled (swing ${swing.enabled ? swingWeight : 'disabled'}, daytrade ${daytrade.enabled ? daytradeWeight : 'disabled'})`,
+      };
+    }
+
+    const dominant = swingWeight >= daytradeWeight ? 'swing' : 'daytrade';
+    return {
+      vetoed: false,
+      reason: `strategy gate: regime ${regime.regime} → swing ${swingWeight.toFixed(2)}, daytrade ${daytradeWeight.toFixed(2)} (dominant: ${dominant})`,
+    };
+  }
+
+  /** Read a strategy's configured regime weight (0 if unconfigured). */
+  private weighterWeight(
+    weights: { swing: Partial<Record<RegimeEnum, number>>; daytrade: Partial<Record<RegimeEnum, number>> },
+    strategy: 'swing' | 'daytrade',
+    regime: RegimeEnum,
+  ): number {
+    return weights[strategy][regime] ?? 0;
   }
 }
 

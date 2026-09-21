@@ -20,6 +20,45 @@
 /** The three supported risk profiles. */
 export type RiskProfileName = 'conservative' | 'moderate' | 'aggressive';
 
+import type { RegimeEnum } from '../services/RegimeClassifier';
+
+/** Strategy archetypes that can be tuned per profile. */
+export type StrategyName = 'swing' | 'daytrade';
+
+/**
+ * Per-strategy tuning: indicator parameters + regime weighting + enablement.
+ * This is the "fine-tune each strategy" axis, orthogonal to risk tolerance.
+ *
+ * - `enabled` gates whether the strategy may produce entries at all.
+ * - `regime_weights` overrides the StrategyWeighter's default per-regime weight
+ *   for this strategy (genuinely wired into the engine).
+ * - Indicator parameters (RSI/EMA/MACD/ADX) form the config contract consumed
+ *   by the strategy evaluation layer (the TypeScript scorer and the Freqtrade
+ *   SwingStrategy/DayTradeStrategy).
+ */
+export interface StrategyTuning {
+  /** Whether this strategy may produce entries under this profile. */
+  enabled: boolean;
+
+  /* Indicator parameters (consumed by the strategy evaluation layer). */
+  rsi_period: number;
+  rsi_oversold: number;
+  rsi_overbought: number;
+  ema_short_period: number;
+  ema_long_period: number;
+  macd_fast: number;
+  macd_slow: number;
+  macd_signal: number;
+  adx_threshold: number;
+
+  /* Entry/exit score thresholds (0-100) for this strategy. */
+  buy_score_threshold: number;
+  sell_score_threshold: number;
+
+  /* Per-regime weight override (feeds StrategyWeighter). */
+  regime_weights: Partial<Record<RegimeEnum, number>>;
+}
+
 /** A single investor profile: all tunable advisor parameters. */
 export interface InvestorProfile {
   /** Stable identifier (used in logs / reports). */
@@ -52,11 +91,9 @@ export interface InvestorProfile {
   /** Max drawdown % from peak before new entries are blocked. */
   max_drawdown_pct: number;
 
-  /* --- Strategy weighting (feeds StrategyWeighter) --- */
-  /** Whether to allow mean-reversion (daytrade) entries at all. */
-  allow_mean_reversion: boolean;
-  /** Whether to allow trend-following (swing) entries at all. */
-  allow_trend_following: boolean;
+  /* --- Per-strategy tuning (feeds StrategyWeighter + strategy layer) --- */
+  /** Per-strategy parameter tuning. Replaces the old allow_* booleans. */
+  strategy_tuning: Record<StrategyName, StrategyTuning>;
 
   /* --- Confirmation requirements --- */
   /** Require multi-timeframe alignment before trading. */
@@ -73,6 +110,58 @@ export interface InvestorProfile {
   trailing_stop_pct: number;
 }
 
+/** Regime enum for per-strategy weight tables. */
+
+/**
+ * Default swing (trend-following) tuning. Conservative profiles tighten the
+ * RSI thresholds and raise the entry bar; aggressive profiles loosen them.
+ */
+const DEFAULT_SWING_TUNING: StrategyTuning = {
+  enabled: true,
+  rsi_period: 14,
+  rsi_oversold: 30,
+  rsi_overbought: 70,
+  ema_short_period: 50,
+  ema_long_period: 200,
+  macd_fast: 12,
+  macd_slow: 26,
+  macd_signal: 9,
+  adx_threshold: 25,
+  buy_score_threshold: 60,
+  sell_score_threshold: 40,
+  regime_weights: {
+    STRONG_BULL: 0.8,
+    STRONG_BEAR: 0.8,
+    WEAK_BULL: 0.4,
+    WEAK_BEAR: 0.4,
+    SIDEWAYS: 0.1,
+  },
+};
+
+/**
+ * Default daytrade (mean-reversion) tuning.
+ */
+const DEFAULT_DAYTRADE_TUNING: StrategyTuning = {
+  enabled: true,
+  rsi_period: 14,
+  rsi_oversold: 25,
+  rsi_overbought: 75,
+  ema_short_period: 12,
+  ema_long_period: 26,
+  macd_fast: 12,
+  macd_slow: 26,
+  macd_signal: 9,
+  adx_threshold: 20,
+  buy_score_threshold: 60,
+  sell_score_threshold: 40,
+  regime_weights: {
+    WEAK_BULL: 0.5,
+    WEAK_BEAR: 0.5,
+    SIDEWAYS: 0.7,
+    LOW_VOL: 0.5,
+  },
+};
+
 /** Built-in profile templates. */
 export const INVESTOR_PROFILES: Record<RiskProfileName, InvestorProfile> = {
   /** Low risk — capital preservation first: small positions, tight stops, high bar to trade. */
@@ -88,8 +177,10 @@ export const INVESTOR_PROFILES: Record<RiskProfileName, InvestorProfile> = {
     tp2_atr_multiple: 2.0,
     min_reward_risk_ratio: 2.0,    // demand 2:1 reward
     max_drawdown_pct: 10,          // cut entries after 10% DD
-    allow_mean_reversion: false,   // only trend-following
-    allow_trend_following: true,
+    strategy_tuning: {
+      swing: { ...DEFAULT_SWING_TUNING, enabled: true, rsi_oversold: 35, rsi_overbought: 65, buy_score_threshold: 65 },
+      daytrade: { ...DEFAULT_DAYTRADE_TUNING, enabled: false },  // conservative: no mean-reversion
+    },
     require_multi_timeframe_alignment: true,
     require_derivatives_confirmation: true,
     require_on_chain_confirmation: true,
@@ -110,8 +201,10 @@ export const INVESTOR_PROFILES: Record<RiskProfileName, InvestorProfile> = {
     tp2_atr_multiple: 2.5,
     min_reward_risk_ratio: 1.5,
     max_drawdown_pct: 15,
-    allow_mean_reversion: true,
-    allow_trend_following: true,
+    strategy_tuning: {
+      swing: { ...DEFAULT_SWING_TUNING, enabled: true },
+      daytrade: { ...DEFAULT_DAYTRADE_TUNING, enabled: true },
+    },
     require_multi_timeframe_alignment: true,
     require_derivatives_confirmation: false,
     require_on_chain_confirmation: false,
@@ -132,8 +225,10 @@ export const INVESTOR_PROFILES: Record<RiskProfileName, InvestorProfile> = {
     tp2_atr_multiple: 3.0,
     min_reward_risk_ratio: 1.2,
     max_drawdown_pct: 25,
-    allow_mean_reversion: true,
-    allow_trend_following: true,
+    strategy_tuning: {
+      swing: { ...DEFAULT_SWING_TUNING, enabled: true, rsi_oversold: 25, rsi_overbought: 75, buy_score_threshold: 55 },
+      daytrade: { ...DEFAULT_DAYTRADE_TUNING, enabled: true, rsi_oversold: 20, rsi_overbought: 80, buy_score_threshold: 55 },
+    },
     require_multi_timeframe_alignment: false,
     require_derivatives_confirmation: false,
     require_on_chain_confirmation: false,
