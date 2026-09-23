@@ -179,6 +179,8 @@ async function runHourly(): Promise<void> {
     } else {
       try { executor.restoreState(state.portfolio); } catch { /* fresh */ }
     }
+    // Clean any corrupted (zero-quantity / future-dated) positions from prior runs.
+    executor.cleanupPositions();
 
     const snapshot = { profile, timestamp: new Date().toISOString(), signals: [] as any[] };
 
@@ -227,11 +229,16 @@ async function runHourly(): Promise<void> {
       executor.runExits(priceCache, { [symbol]: freshAction });
 
       // 2. Open a position if the engine produced a tradeable setup.
+      //    Use the engine's VolatilityScaledSizer position_size directly
+      //    (it already enforces max_position_pct and cash constraints).
       if (result.trade_setup && executableAction(result.action)) {
-        executor.openPosition(
-          { ...result, trade_setup: { ...result.trade_setup, position_size: Math.min(result.trade_setup.position_size, config.sizing.max_position_pct * executor.snapshot(priceCache).equity) } },
-          new Date().toISOString(),
-        );
+        const setup = result.trade_setup;
+        // Guard against NaN/zero sizing from transient equity snapshots.
+        if (Number.isFinite(setup.position_size) && setup.position_size > 0) {
+          executor.openPosition(result, new Date().toISOString());
+        } else {
+          allSignals[allSignals.length - 1].block_reason = 'invalid (non-positive) position_size from sizer';
+        }
       }
     }
 

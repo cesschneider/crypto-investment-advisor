@@ -83,6 +83,25 @@ export class PaperTradingExecutor {
     });
   }
 
+  /** Filter out positions with effectively zero quantity (math bug cleanup) and repair timestamped entries. */
+  cleanupPositions(): void {
+    const originalSize = this.positions.size;
+    for (const [symbol, pos] of this.positions) {
+      if (pos.quantity < 1e-10) {
+        this.positions.delete(symbol);
+        continue;
+      }
+      // Repair future-dated entries
+      const now = new Date();
+      if (new Date(pos.entry_time) > now) {
+        pos.entry_time = now.toISOString();
+      }
+    }
+    if (this.positions.size < originalSize) {
+      console.log(`Cleaned up ${originalSize - this.positions.size} zero-quantity positions`);
+    }
+  }
+
   /** Current total equity (cash + mark-to-market positions value). */
   equity(prices: Record<string, number>): number {
     let value = this.cash;
@@ -124,6 +143,11 @@ export class PaperTradingExecutor {
 
     const size = result.trade_setup.position_size;
     const entry = result.trade_setup.entry_price;
+
+    // Defensive: never open a position with non-positive size or invalid price.
+    if (!Number.isFinite(size) || size <= 0 || !Number.isFinite(entry) || entry <= 0) {
+      return false;
+    }
 
     // Enforce max exposure.
     const totalExposure = this.totalExposure(entry);
