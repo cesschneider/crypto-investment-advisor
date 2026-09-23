@@ -179,14 +179,28 @@ export class PaperTradingExecutor {
   private closePosition(symbol: string, exitPrice: number, decision: ExitDecision): void {
     const pos = this.positions.get(symbol);
     if (!pos) return;
-    const closeQty = pos.quantity * decision.close_fraction;
-    const pnl = (exitPrice - pos.entry_price) * closeQty;
-    this.cash += closeQty * exitPrice;
 
-    if (decision.close_fraction >= 1) {
+    // Consume the hit take-profit level so a cascaded TP does not re-fire on
+    // consecutive cycles while price stays above the threshold.
+    if (decision.reason === 'TAKE_PROFIT' && decision.tp_index !== undefined) {
+      pos.take_profits = pos.take_profits.filter((_, i) => i !== decision.tp_index);
+    }
+
+    // Guard: never close an effectively-zero quantity (defensive vs float/phantom positions).
+    if (pos.quantity <= 1e-10) {
       this.positions.delete(symbol);
-    } else {
-      pos.quantity -= closeQty;
+      return;
+    }
+
+    const closeQty = pos.quantity * decision.close_fraction;
+    if (closeQty <= 0) return;
+    const actualQty = Math.min(closeQty, pos.quantity);
+    const pnl = (exitPrice - pos.entry_price) * actualQty;
+    this.cash += actualQty * exitPrice;
+
+    pos.quantity -= actualQty;
+    if (pos.quantity <= 1e-10) {
+      this.positions.delete(symbol);
     }
 
     this.closedTrades.push({
@@ -194,7 +208,7 @@ export class PaperTradingExecutor {
       side: pos.side,
       entry_price: pos.entry_price,
       exit_price: exitPrice,
-      quantity: closeQty,
+      quantity: actualQty,
       pnl,
       pnl_pct: (exitPrice - pos.entry_price) / pos.entry_price,
       exit_reason: decision.reason,

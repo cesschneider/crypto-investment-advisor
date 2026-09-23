@@ -135,4 +135,27 @@ describe('PaperTradingExecutor', () => {
     expect(ex.openPositions).toHaveLength(1);
     expect(ex.openPositions[0].symbol).toBe('BTC');
   });
+
+  test('cascaded take-profit does not re-fire repeatedly while price stays above TP', () => {
+    // engineResult default: take_profits = [TP1 110/50%, TP2 120/50%]
+    const ex = new PaperTradingExecutor(10000, getProfile('aggressive'));
+    ex.openPosition(engineResult('BTC', { trade_setup: { entry_price: 100, stop_loss: 95, take_profits: [{ price: 110, percent: 0.5 }, { price: 120, percent: 0.5 }], risk_reward_ratio: 2, position_size: 1000, position_size_pct: 0.1 } }), new Date().toISOString());
+    expect(ex.openPositions).toHaveLength(1);
+
+    // Cycle 1: price above TP1 → close 50%, consume TP1 level.
+    const d1 = ex.runExits({ BTC: 111 }, { BTC: 'HOLD' });
+    expect(d1).toHaveLength(1);
+    expect(d1[0].reason).toBe('TAKE_PROFIT');
+
+    // Cycle 2: price still above 110 but TP1 was consumed; only TP2 is left.
+    const d2 = ex.runExits({ BTC: 111 }, { BTC: 'HOLD' });
+    // TP2 is 120, so no exit should fire now (TP1 consumed).
+    expect(d2).toHaveLength(0);
+
+    // One more cycle to confirm stability.
+    const d3 = ex.runExits({ BTC: 111 }, { BTC: 'HOLD' });
+    expect(d3).toHaveLength(0);
+    // Use snapshot for closed trade count (closedTrades is private).
+    expect(ex.snapshot({ BTC: 111 }).closed_trades.length).toBeLessThanOrEqual(3); // no runaway partial closes
+  });
 });
