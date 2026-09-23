@@ -114,4 +114,25 @@ describe('PaperTradingExecutor', () => {
     expect(ex.openPositions).toHaveLength(0);
     expect(before).toBe(1);
   });
+
+  test('openPosition rejects non-positive or invalid position size', () => {
+    const ex = new PaperTradingExecutor(10000, getProfile('aggressive'));
+    expect(ex.openPosition(engineResult('DOGE', { trade_setup: { ...engineResult('DOGE').trade_setup!, position_size: 0 } }), new Date().toISOString())).toBe(false);
+    expect(ex.openPosition(engineResult('BTC', { trade_setup: { ...engineResult('BTC').trade_setup!, position_size: NaN } }), new Date().toISOString())).toBe(false);
+    expect(ex.openPositions).toHaveLength(0);
+  });
+
+  test('cleanupPositions removes zero-quantity and repairs future-dated entries', () => {
+    const ex = new PaperTradingExecutor(10000, getProfile('aggressive'));
+    ex.openPosition(engineResult('BTC'), new Date().toISOString());
+    ex.openPosition(engineResult('ETH'), new Date().toISOString());
+    // Corrupt the ETH position to zero quantity + future date.
+    const ethPos = ex.openPositions.find((p) => p.symbol === 'ETH')!;
+    ethPos.quantity = 4.744176857787137e-87;
+    ethPos.entry_time = new Date(Date.now() + 86400000).toISOString();
+
+    ex.cleanupPositions();
+    expect(ex.openPositions).toHaveLength(1);
+    expect(ex.openPositions[0].symbol).toBe('BTC');
+  });
 });
