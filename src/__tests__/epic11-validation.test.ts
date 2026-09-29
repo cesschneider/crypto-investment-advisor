@@ -196,7 +196,13 @@ describe('STORY-11.5 cooldown after stop-out', () => {
     const ex = new PaperTradingExecutor(10000, minimalConfig());
     ex.openPosition(engineResult('BUY'), '2026-09-28T00:00:00Z');
     ex.runExits({ SOL: 94 }, { SOL: 'HOLD' });
-    const reopened = ex.openPosition(engineResult('BUY'), '2026-09-29T02:00:00Z'); // >24h
+    // Simulate elapsed cooldown: restore a state whose cooldown expired.
+    const state = ex.exportState();
+    state.cooldowns!.SOL = new Date(Date.now() - PaperTradingExecutor.COOLDOWN_MS - 60000).toISOString();
+    const ex2 = new PaperTradingExecutor(10000, minimalConfig());
+    ex2.restoreState(state);
+    expect(ex2.isCoolingDown('SOL')).toBe(false); // expired → GC'd
+    const reopened = ex2.openPosition(engineResult('BUY'), new Date().toISOString());
     expect(reopened).toBe(true);
   });
 

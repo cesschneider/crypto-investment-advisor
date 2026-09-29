@@ -10,8 +10,8 @@ describe('AdvisorConfig (config-driven profiles)', () => {
 
   test('loadConfig merges JSON profile overrides onto defaults', () => {
     const c = loadConfig('conservative');
-    // JSON overrides these from the default.
-    expect(c.min_confidence).toBe(75);
+    // JSON overrides these from the default (STORY-11.2: min_confidence 75 → 65).
+    expect(c.min_confidence).toBe(65);
     expect(c.sizing.max_position_pct).toBe(0.02);
     expect(c.risk.min_reward_risk_ratio).toBe(2.0);
     expect(c.drawdown.max_drawdown_pct).toBe(10);
@@ -47,9 +47,11 @@ describe('AdvisorConfig (config-driven profiles)', () => {
   test('confirmation requirements differ by profile', () => {
     const c = loadConfig('conservative');
     const a = loadConfig('aggressive');
+    // STORY-11.2: conservative keeps multi-TF alignment but no longer requires
+    // derivatives/on-chain confirmation (on-chain source unwired — dead gate).
     expect(c.confirmation.require_multi_timeframe_alignment).toBe(true);
-    expect(c.confirmation.require_derivatives_confirmation).toBe(true);
-    expect(c.confirmation.require_on_chain_confirmation).toBe(true);
+    expect(c.confirmation.require_derivatives_confirmation).toBe(false);
+    expect(c.confirmation.require_on_chain_confirmation).toBe(false);
     expect(a.confirmation.require_multi_timeframe_alignment).toBe(false);
   });
 

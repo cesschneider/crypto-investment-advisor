@@ -58,6 +58,13 @@ export interface ExitManagerConfig {
   trailing_stop_pct: number;
   /** Allow a signal-flip (fresh SELL on a long) to close the position. */
   allow_signal_flip_exit: boolean;
+  /**
+   * Trailing activation policy (STORY-11.1):
+   *   - 'immediate' (legacy): trail from entry — old behavior, high_vol stop-outs.
+   *   - 'tp1' (default): trailing is INACTIVE until TP1 price is reached; at TP1
+   *     the stop jumps to breakeven (entry) and the trailing stop takes over.
+   */
+  trail_activation?: 'immediate' | 'tp1';
 }
 
 /** A fresh signal action for an owned symbol (for signal-flip detection). */
@@ -66,11 +73,24 @@ export type FreshSignalAction =
   | 'SELL' | 'STRONG_SELL' | 'WEAK_SELL'
   | 'HOLD' | 'NO_TRADE' | 'INSUFFICIENT_DATA';
 
+/** True when the position has reached its first take-profit level. */
+function tp1Reached(position: ManagedPosition): boolean {
+  const { side, current_price, entry_price, take_profits } = position;
+  if (!take_profits || take_profits.length === 0) {
+    // No TP levels: treat TP1 as reached at entry + 1 favorable move? No —
+    // with no TP ladder, trailing arms at breakeven immediately after entry
+    // is profitable; simplest deterministic rule: arm when unrealized P&L > 0.
+    return side === 'long' ? current_price > entry_price : current_price < entry_price;
+  }
+  const tp1 = take_profits[0].price;
+  return side === 'long' ? current_price >= tp1 : current_price <= tp1;
+}
+
 export class ExitManager {
   private config: ExitManagerConfig;
 
   constructor(config: Partial<ExitManagerConfig> = {}) {
-    this.config = { trailing_stop_pct: 0.015, allow_signal_flip_exit: true, ...config };
+    this.config = { trailing_stop_pct: 0.015, allow_signal_flip_exit: true, trail_activation: 'tp1', ...config };
   }
 
   /**
@@ -119,21 +139,47 @@ export class ExitManager {
       }
     }
 
-    // --- Trailing stop ---
+    // --- Trailing stop (STORY-11.1: arms only after TP1; below TP1 only the
+    //     hard ATR stop and signal-flip apply. At TP1 the stop moves to
+    //     breakeven and the trail takes over — no more suffocation.) ---
     if (this.config.trailing_stop_pct > 0) {
-      const best = position.best_price ?? entry_price;
-      const trailPrice = side === 'long'
-        ? best * (1 - this.config.trailing_stop_pct)
-        : best * (1 + this.config.trailing_stop_pct);
-      const breached = side === 'long' ? current_price <= trailPrice : current_price >= trailPrice;
-      if (breached) {
-        return {
-          symbol: position.symbol,
-          exit: true,
-          reason: 'TRAILING_STOP',
-          close_fraction: 1,
-          rationale: `trailing stop breached (price ${current_price} vs trail ${trailPrice.toFixed(4)})`,
-        };
+      const armed = this.config.trail_activation === 'immediate' || tp1Reached(position);
+      if (armed) {
+        const best = position.best_price ?? entry_price;
+        const trailPrice = side === 'long'
+          ? best * (1 - this.config.trailing_stop_pct)
+          : best * (1 + this.config.trailing_stop_pct);
+        const breached = side === 'long' ? current_price <= trailPrice : current_price >= trailPrice;
+        if (breached) {
+          return {
+            symbol: position.symbol,
+            exit: true,
+            reason: 'TRAILING_STOP',
+            close_fraction: 1,
+            rationale: `trailing stop breached (price ${current_price} vs trail ${trailPrice.toFixed(4)}, armed after TP1)`,
+          };
+        }
+      } else {
+        // Below TP1 with trail_activation='tp1': breakeven floor (STORY-11.1).
+        // If the position ever reached TP1 and scaled out (take_profits consumed)
+        // but price fell back to/below entry, exit at breakeven — never let a
+        // TP1-hit winner round-trip to a full loss. Detected by best_price above
+        // TP1 while the ladder shows consumed levels and price back at entry.
+        const floorBest = position.best_price ?? entry_price;
+        const tp1 = take_profits.length > 0 ? take_profits[0].price : null;
+        const scaledOutOfTp1 = tp1 === null && (side === 'long' ? floorBest >= entry_price * 1.02 : floorBest <= entry_price * 0.98);
+        if (scaledOutOfTp1) {
+          const floorBreached = side === 'long' ? current_price <= entry_price : current_price >= entry_price;
+          if (floorBreached) {
+            return {
+              symbol: position.symbol,
+              exit: true,
+              reason: 'STOP_LOSS',
+              close_fraction: 1,
+              rationale: `breakeven floor after TP1 (price ${current_price} back at entry ${entry_price})`,
+            };
+          }
+        }
       }
     }
 

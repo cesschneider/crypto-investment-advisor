@@ -1,7 +1,7 @@
 {
   "name": "conservative",
   "label": "Conservative (Low Risk)",
-  "min_confidence": 75,
+  "min_confidence": 65,
   "sizing": {
     "max_position_pct": 0.02,
     "max_portfolio_risk_pct": 0.01,
@@ -20,8 +20,8 @@
   },
   "confirmation": {
     "require_multi_timeframe_alignment": true,
-    "require_derivatives_confirmation": true,
-    "require_on_chain_confirmation": true
+    "require_derivatives_confirmation": false,
+    "require_on_chain_confirmation": false
   },
   "exit": { "allow_signal_flip_exit": true, "trailing_stop_pct": 0.01 }
 }

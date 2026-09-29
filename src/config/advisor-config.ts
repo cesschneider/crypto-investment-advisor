@@ -163,6 +163,8 @@ export interface AdvisorConfig {
   exit: {
     allow_signal_flip_exit: boolean;
     trailing_stop_pct: number;
+    /** STORY-11.1: 'tp1' (default) arms the trail only after TP1; 'immediate' = legacy. */
+    trail_activation?: 'immediate' | 'tp1';
   };
 
   /* Multi-timeframe analyzer */
@@ -322,7 +324,7 @@ export const DEFAULT_ADVISOR_CONFIG: AdvisorConfig = {
     require_derivatives_confirmation: false,
     require_on_chain_confirmation: false,
   },
-  exit: { allow_signal_flip_exit: true, trailing_stop_pct: 0.015 },
+  exit: { allow_signal_flip_exit: true, trailing_stop_pct: 0.015, trail_activation: 'tp1' as const },
   multi_timeframe: {
     min_candles: 20, bb_period: 20, bb_std: 2, rsi_period: 14,
     proximity_threshold: 0.02, min_penalty: 30, max_penalty: 50,

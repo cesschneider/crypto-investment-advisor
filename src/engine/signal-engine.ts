@@ -351,6 +351,36 @@ export class SignalEngine {
       };
     }
 
+    // 12b. STORY-11.6: regime-conditional entries. In a DOWNTREND regime
+    //      (WEAK_ or STRONG_), mean-reversion longs (oversold RSI) are blocked
+    //      unless the higher timeframe alignment is BULLISH — no more falling
+    //      knives. UPTREND/RANGE and all SELL-side actions are unaffected.
+    if (
+      regime?.regime &&
+      (regime.regime === 'STRONG_BEAR' || regime.regime === 'WEAK_BEAR') &&
+      (penalized.action === 'BUY' || penalized.action === 'STRONG_BUY' || penalized.action === 'WEAK_BUY')
+    ) {
+      const higherBullish = alignment?.higher_tf_direction === 'BULLISH';
+      if (!higherBullish) {
+        const reason = 'REGIME_BLOCKED_MEAN_REVERSION: BEAR regime + non-bullish higher-TF alignment';
+        return {
+          symbol: input.symbol,
+          action: 'NO_TRADE',
+          confidence: penalized.confidence,
+          block_reason: reason,
+          regime,
+          alignment: alignment
+            ? { score: alignment.alignment_score, higher_direction: alignment.higher_tf_direction, penalty: alignment.confidence_penalty }
+            : undefined,
+          derivatives_verdict: derivativesVerdict,
+          onchain_verdict: onchainVerdict,
+          sentiment_role: sentimentRole,
+          macro_environment: macroEnvironment,
+          evidence: [...evidence, reason],
+        };
+      }
+    }
+
     // 13. ATR stop/TP + risk/reward gate.
     const entryPrice = input.scoring.price ?? input.candles[input.candles.length - 1]?.close ?? 0;
     if (entryPrice <= 0 || input.candles.length < 15) {

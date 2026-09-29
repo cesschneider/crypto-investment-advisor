@@ -44,6 +44,21 @@ export interface ClosedTrade {
   closed_at: string;
 }
 
+/** A rejected-signal audit record (STORY-11.3 — explainability for flat profiles). */
+export interface RejectedSignal {
+  symbol: string;
+  profile: string;
+  action: string;
+  confidence: number;
+  block_reason: string;
+  regime?: string;
+  alignment_score?: number;
+  ts: string;
+}
+
+/** Max rejected-signal records kept per profile (cap, drop oldest). */
+const MAX_REJECTED_SIGNALS = 200;
+
 /** Portfolio snapshot. */
 export interface PaperPortfolioSnapshot {
   equity: number;
@@ -70,6 +85,10 @@ export class PaperTradingExecutor {
   private closedTrades: ClosedTrade[] = [];
   private peakEquity: number;
   private tradeCounter = 0;
+  /** STORY-11.3: per-symbol cooldown until (ISO) — set on STOP_LOSS/TRAILING_STOP close. */
+  private cooldowns: Record<string, string> = {};
+  /** STORY-11.3: recent rejected signals (audit trail, capped). */
+  private rejectedSignals: RejectedSignal[] = [];
 
   constructor(initialCapital: number, config: AdvisorConfig) {
     this.initialCapital = initialCapital;
@@ -80,6 +99,7 @@ export class PaperTradingExecutor {
     this.exitManager = new ExitManager({
       trailing_stop_pct: config.exit.trailing_stop_pct,
       allow_signal_flip_exit: config.exit.allow_signal_flip_exit,
+      trail_activation: (config.exit as any).trail_activation ?? 'tp1',
     });
   }
 
@@ -137,9 +157,39 @@ export class PaperTradingExecutor {
    * Open a position from an engine result (tradeable action with trade_setup).
    * Returns true when a position was opened.
    */
+  /**
+   * Record a rejected signal (STORY-11.3) — audit trail for flat profiles.
+   * Capped at MAX_REJECTED_SIGNALS (drop oldest).
+   */
+  recordRejection(signal: RejectedSignal): void {
+    this.rejectedSignals.push(signal);
+    if (this.rejectedSignals.length > MAX_REJECTED_SIGNALS) {
+      this.rejectedSignals.splice(0, this.rejectedSignals.length - MAX_REJECTED_SIGNALS);
+    }
+  }
+
+  /** STORY-11.5: true when the symbol is within its post-stop-out cooldown window. */
+  isCoolingDown(symbol: string, now: Date = new Date()): boolean {
+    const until = this.cooldowns[symbol];
+    if (!until) return false;
+    if (new Date(until).getTime() <= now.getTime()) {
+      delete this.cooldowns[symbol]; // expired — garbage-collect
+      return false;
+    }
+    return true;
+  }
+
+  /** STORY-11.5: cooldown duration applied after a stop-out (24h). */
+  static readonly COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
   openPosition(result: EngineResult, timestamp: string): boolean {
     if (!result.trade_setup) return false;
     if (this.positions.has(result.symbol)) return false; // already holding
+
+    // STORY-11.5: block re-entry for symbols cooling down after a stop-out.
+    if (this.isCoolingDown(result.symbol, new Date(timestamp))) {
+      return false;
+    }
 
     const size = result.trade_setup.position_size;
     const entry = result.trade_setup.entry_price;
@@ -159,9 +209,12 @@ export class PaperTradingExecutor {
     const quantity = size / entry;
     this.cash -= size;
 
+    // STORY-11.4: side comes from the engine action — SELL-family opens SHORT.
+    const side: 'long' | 'short' = result.action.includes('SELL') ? 'short' : 'long';
+
     this.positions.set(result.symbol, {
       symbol: result.symbol,
-      side: 'long',
+      side,
       entry_price: entry,
       current_price: entry,
       stop_loss: result.trade_setup.stop_loss,
@@ -195,12 +248,23 @@ export class PaperTradingExecutor {
     const closeQty = pos.quantity * decision.close_fraction;
     if (closeQty <= 0) return;
     const actualQty = Math.min(closeQty, pos.quantity);
-    const pnl = (exitPrice - pos.entry_price) * actualQty;
+    // STORY-11.4: side-aware P&L — short gains when price falls.
+    const direction = pos.side === 'long' ? 1 : -1;
+    const pnl = (exitPrice - pos.entry_price) * actualQty * direction;
     this.cash += actualQty * exitPrice;
 
     pos.quantity -= actualQty;
     if (pos.quantity <= 1e-10) {
       this.positions.delete(symbol);
+    }
+
+    // STORY-11.5: a stop-out (full close by STOP_LOSS/TRAILING_STOP) starts a
+    // 24h cooldown for the symbol — no immediate re-entry into the same pattern.
+    if (
+      (decision.reason === 'STOP_LOSS' || decision.reason === 'TRAILING_STOP') &&
+      pos.quantity <= 1e-10
+    ) {
+      this.cooldowns[symbol] = new Date(Date.now() + PaperTradingExecutor.COOLDOWN_MS).toISOString();
     }
 
     this.closedTrades.push({
@@ -210,7 +274,7 @@ export class PaperTradingExecutor {
       exit_price: exitPrice,
       quantity: actualQty,
       pnl,
-      pnl_pct: (exitPrice - pos.entry_price) / pos.entry_price,
+      pnl_pct: ((exitPrice - pos.entry_price) / pos.entry_price) * direction,
       exit_reason: decision.reason,
       opened_at: pos.entry_time,
       closed_at: new Date().toISOString(),
@@ -266,6 +330,10 @@ export class PaperTradingExecutor {
     tradeCounter: number;
     positions: PaperPosition[];
     closedTrades: ClosedTrade[];
+    /** STORY-11.3: rejected-signal audit trail (capped). */
+    rejected_signals: RejectedSignal[];
+    /** STORY-11.5: per-symbol cooldown until (ISO strings). */
+    cooldowns: Record<string, string>;
   } {
     return {
       initialCapital: this.initialCapital,
@@ -274,6 +342,8 @@ export class PaperTradingExecutor {
       tradeCounter: this.tradeCounter,
       positions: Array.from(this.positions.values()),
       closedTrades: [...this.closedTrades],
+      rejected_signals: [...this.rejectedSignals],
+      cooldowns: { ...this.cooldowns },
     };
   }
 
@@ -285,6 +355,8 @@ export class PaperTradingExecutor {
     tradeCounter: number;
     positions: PaperPosition[];
     closedTrades: ClosedTrade[];
+    rejected_signals?: RejectedSignal[];
+    cooldowns?: Record<string, string>;
   }): void {
     this.initialCapital = state.initialCapital ?? this.initialCapital;
     this.cash = state.cash ?? this.cash;
@@ -292,6 +364,8 @@ export class PaperTradingExecutor {
     this.tradeCounter = state.tradeCounter ?? this.tradeCounter;
     this.positions = new Map((state.positions ?? []).map((p) => [p.symbol, p]));
     this.closedTrades = [...(state.closedTrades ?? [])];
+    this.rejectedSignals = [...(state.rejected_signals ?? [])];
+    this.cooldowns = { ...(state.cooldowns ?? {}) };
   }
 }
 

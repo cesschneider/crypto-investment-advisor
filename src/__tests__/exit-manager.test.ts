@@ -54,12 +54,21 @@ describe('ExitManager', () => {
     expect(d.exit).toBe(false);
   });
 
-  test('trailing stop closes when price retraces below trail', () => {
-    const em = new ExitManager({ trailing_stop_pct: 0.05 });
+  test('trailing stop closes when price retraces below trail (legacy immediate mode)', () => {
+    // STORY-11.1: default is trail_activation='tp1' (no trailing before TP1).
+    // This legacy test exercises the 'immediate' mode explicitly.
+    const em = new ExitManager({ trailing_stop_pct: 0.05, trail_activation: 'immediate' } as any);
     // best_price 105, trail = 105 * 0.95 = 99.75
     const d = em.evaluate(longPos({ current_price: 99, best_price: 105 }));
     expect(d.exit).toBe(true);
     expect(d.reason).toBe('TRAILING_STOP');
+  });
+
+  test('STORY-11.1: no trailing below TP1 in default tp1 mode', () => {
+    const em = new ExitManager({ trailing_stop_pct: 0.05 });
+    // best_price 105 (< TP1 110), trail would be 99.75 — but trailing is NOT armed.
+    const d = em.evaluate(longPos({ current_price: 99, best_price: 105 }));
+    expect(d.exit).toBe(false);
   });
 
   test('no exit when price is between stop and TP with no flip', () => {

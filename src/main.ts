@@ -235,10 +235,25 @@ async function runHourly(): Promise<void> {
         const setup = result.trade_setup;
         // Guard against NaN/zero sizing from transient equity snapshots.
         if (Number.isFinite(setup.position_size) && setup.position_size > 0) {
-          executor.openPosition(result, new Date().toISOString());
+          const opened = executor.openPosition(result, new Date().toISOString());
+          if (!opened) {
+            allSignals[allSignals.length - 1].block_reason = 'openPosition rejected (cooldown / exposure / cash)';
+          }
         } else {
           allSignals[allSignals.length - 1].block_reason = 'invalid (non-positive) position_size from sizer';
         }
+      } else if (!result.trade_setup && (result.action === 'NO_TRADE' || result.action === 'INSUFFICIENT_DATA')) {
+        // STORY-11.3: persist the rejection reason for flat-profile explainability.
+        executor.recordRejection({
+          symbol,
+          profile,
+          action: result.action,
+          confidence: result.confidence,
+          block_reason: result.block_reason ?? 'unknown',
+          regime: result.regime?.regime,
+          alignment_score: result.alignment?.score,
+          ts: new Date().toISOString(),
+        });
       }
     }
 
