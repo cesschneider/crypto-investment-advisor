@@ -242,8 +242,9 @@ async function runHourly(): Promise<void> {
         } else {
           allSignals[allSignals.length - 1].block_reason = 'invalid (non-positive) position_size from sizer';
         }
-      } else if (!result.trade_setup && (result.action === 'NO_TRADE' || result.action === 'INSUFFICIENT_DATA')) {
+      } else if (!result.trade_setup && result.block_reason) {
         // STORY-11.3: persist the rejection reason for flat-profile explainability.
+        // Covers NO_TRADE / INSUFFICIENT_DATA / HOLD-with-block_reason (confidence gate).
         executor.recordRejection({
           symbol,
           profile,
