@@ -274,7 +274,9 @@ export class MultiTimeframeAnalyzer {
     const alignmentScore = decisive > 0 ? Math.round((agreeing / decisive) * 100) : 0;
 
     const confirmationFlag =
-      decisive > 0 && agreeing === decisive && insufficient.length === 0;
+      decisive > 0 &&
+      agreeing === decisive &&
+      analyzable >= 3;
 
     // Conflict list: timeframes opposing the higher direction + insufficient data.
     const conflictList: string[] = [];

@@ -41,6 +41,7 @@ import {
   toSeries,
   bollinger,
 } from './utils/indicators';
+import { fetchDerivatives, fetchMacro, fetchSentiment } from './services/market-data-fetchers';
 
 dotenv.config();
 
@@ -132,6 +133,7 @@ function avgHourlyVol(candles: Candle[]): number {
 async function fetchTimeframes(symbol: string): Promise<Partial<Record<Timeframe, Candle[]>>> {
   const out: Partial<Record<Timeframe, Candle[]>> = {};
   const tfs: Array<[Timeframe, string]> = [
+    ['1W', '1w'],
     ['1D', '1d'],
     ['4H', '4h'],
     ['1H', '1h'],
@@ -167,6 +169,14 @@ async function runHourly(): Promise<void> {
   const allSignals: any[] = [];
   const allSnapshots: any[] = [];
 
+  // Fetch shared context data once per cycle: derivatives per symbol,
+  // macro (DXY/VIX/S&P) and sentiment (Fear & Greed) globally.
+  const derivativesBySymbol: Record<string, Awaited<ReturnType<typeof fetchDerivatives>>> = {};
+  for (const symbol of SYMBOLS) {
+    derivativesBySymbol[symbol] = await fetchDerivatives(symbol);
+  }
+  const [macroData, sentimentData] = await Promise.all([fetchMacro(), fetchSentiment()]);
+
   for (const profile of PROFILES) {
     const config = loadConfig(profile, { name: profile, label: defaultLabel(profile) });
     const engine = new SignalEngine();
@@ -196,6 +206,9 @@ async function runHourly(): Promise<void> {
         symbol,
         scoring: buildScoring(symbol, h1, price),
         timeframes: candleCache[symbol],
+        derivatives: derivativesBySymbol[symbol],
+        macro: macroData,
+        sentiment: sentimentData,
         portfolio: {
           equity: executor.snapshot(priceCache).equity,
           current_risk_usd: 0,
